@@ -81,10 +81,11 @@ public class ElasticSerachService {
 				RestClient kibanaClient = builder(
 						Arrays.stream(kibanahoststr).map(s -> HttpHost.create((String) s)).toArray(HttpHost[]::new))
 								.build();
-				Request request = new Request(METHOD_PUT, "/");
+				Request request = new Request(METHOD_POST, "/api/saved_objects/_import");
 				URI kibanaDashBoard = this.getClass().getResource("objects.ndjson").toURI();
 				String objects = FileUtil.readFileToString(new File(kibanaDashBoard), StandardCharsets.UTF_8);
 				request.setJsonEntity(objects);
+				//request.getOptions().getHeaders().add(new BasicHeader("kbn-xsrf", "true"));
 				kibanaClient.performRequest(request);
 			}
 		}
