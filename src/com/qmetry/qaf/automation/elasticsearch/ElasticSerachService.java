@@ -22,6 +22,7 @@
 package com.qmetry.qaf.automation.elasticsearch;
 
 import static com.qmetry.qaf.automation.core.ConfigurationManager.getBundle;
+import static org.elasticsearch.client.RestClient.builder;
 
 import java.io.File;
 import java.io.IOException;
@@ -42,6 +43,8 @@ import com.qmetry.qaf.automation.util.FileUtil;
 import com.qmetry.qaf.automation.util.JSONUtil;
 
 /**
+ * This class used by {@link ElasticSearchIndexer} to index result documents. Please refer {@link ElasticSearchIndexer}.
+ * 
  * @author chirag.jayswal
  *
  */
@@ -52,7 +55,6 @@ public class ElasticSerachService {
 	private static final String CHKPONIT_INDEX_NAME = INDEX_NAME + "_checkpoints";
 	private static final String METHOD_POST = "POST";
 	private static final String METHOD_PUT = "PUT";
-
 	private RestClient elasticSerachClient;
 
 	private ElasticSerachService() {
@@ -62,9 +64,8 @@ public class ElasticSerachService {
 	private void init() {
 		try {
 			String[] hoststr = getBundle().getStringArray("elasticsearch.host", new String[] {});
-			elasticSerachClient = RestClient
-					.builder(Arrays.stream(hoststr).map(s -> HttpHost.create((String) s)).toArray(HttpHost[]::new))
-					.build();
+			elasticSerachClient = builder(
+					Arrays.stream(hoststr).map(s -> HttpHost.create((String) s)).toArray(HttpHost[]::new)).build();
 			createAssets();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -77,9 +78,9 @@ public class ElasticSerachService {
 			createIndex(LOG_INDEX_NAME);
 			String[] kibanahoststr = getBundle().getStringArray("kibana.host", new String[] {});
 			if (kibanahoststr.length > 0) {
-				RestClient kibanaClient = RestClient.builder(
+				RestClient kibanaClient = builder(
 						Arrays.stream(kibanahoststr).map(s -> HttpHost.create((String) s)).toArray(HttpHost[]::new))
-						.build();
+								.build();
 				Request request = new Request(METHOD_PUT, "/");
 				URI kibanaDashBoard = this.getClass().getResource("objects.ndjson").toURI();
 				String objects = FileUtil.readFileToString(new File(kibanaDashBoard), StandardCharsets.UTF_8);
