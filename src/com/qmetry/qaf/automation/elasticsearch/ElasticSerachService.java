@@ -49,12 +49,12 @@ import com.qmetry.qaf.automation.util.JSONUtil;
  *
  */
 public class ElasticSerachService {
-	private static final ElasticSerachService SERVICE = new ElasticSerachService();
 	private static final String INDEX_NAME = getBundle().getString("elasticsearch.index", "qaf_results");
 	private static final String LOG_INDEX_NAME = INDEX_NAME + "_commandlogs";
 	private static final String CHKPONIT_INDEX_NAME = INDEX_NAME + "_checkpoints";
 	private static final String METHOD_POST = "POST";
 	private static final String METHOD_PUT = "PUT";
+	private static final ElasticSerachService SERVICE = new ElasticSerachService();
 	private RestClient elasticSerachClient;
 
 	private ElasticSerachService() {
