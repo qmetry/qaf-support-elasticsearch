@@ -24,6 +24,7 @@ package com.qmetry.qaf.automation.elasticsearch;
 import static com.qmetry.qaf.automation.core.ConfigurationManager.getBundle;
 
 import java.util.Collection;
+import java.util.Date;
 import java.util.Map;
 import java.util.UUID;
 
@@ -32,6 +33,7 @@ import org.apache.commons.configuration.ConfigurationConverter;
 import com.qmetry.qaf.automation.core.CheckpointResultBean;
 import com.qmetry.qaf.automation.core.LoggingBean;
 import com.qmetry.qaf.automation.integration.TestCaseRunResult;
+import com.qmetry.qaf.automation.util.DateUtil;
 
 /**
  * @author chirag.jayswal
@@ -43,14 +45,15 @@ public class TestCaseRunResultDocument {
 	private String name;
 	private String status;
 	private String className;
-	private Long stTime;
-	private Long suite_stTime;
+	private String stTime;
+	private String suite_stTime;
 	private Long duration;
 	private Map<String, Object> executionInfo;
 	private Map<String, Object> metadata;
 	private Throwable exception;
 	private Collection<CheckpointResultBean> steps;
 	private Collection<LoggingBean> commands;
+	private static final String DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSZZ";
 
 	public TestCaseRunResultDocument() {
 	}
@@ -58,11 +61,11 @@ public class TestCaseRunResultDocument {
 	public TestCaseRunResultDocument(TestCaseRunResult result) {
 		name = result.getName();
 		status = result.getStatus().name();
-		stTime = result.getStarttime();
+		stTime = DateUtil.getFormatedDate(new Date(result.getStarttime()),DATE_FORMAT);
 		duration = result.getEndtime() - result.getStarttime();
 		exception = result.getThrowable();
 		executionInfo = result.getExecutionInfo();
-		suite_stTime = getBundle().getLong("suit.start.ts", sttime);
+		suite_stTime = DateUtil.getFormatedDate(new Date(getBundle().getLong("suit.start.ts", sttime)),DATE_FORMAT);
 		metadata = result.getMetaData();
 		if (!getBundle().subset("project").isEmpty()) {
 			executionInfo.put("project", ConfigurationConverter.getMap(getBundle().subset("project")));
@@ -102,20 +105,24 @@ public class TestCaseRunResultDocument {
 		this.className = className;
 	}
 
-	public Long getStTime() {
+	public String getStTime() {
 		return stTime;
 	}
 
-	public void setStTime(Long stTime) {
+	public void setStTime(String stTime) {
 		this.stTime = stTime;
 	}
 
-	public Long getSuite_stTime() {
+	public String getSuite_stTime() {
 		return suite_stTime;
 	}
 
-	public void setSuite_stTime(Long suite_stTime) {
+	public void setSuite_stTime(String suite_stTime) {
 		this.suite_stTime = suite_stTime;
+	}
+
+	public static long getSttime() {
+		return sttime;
 	}
 
 	public Long getDuration() {
