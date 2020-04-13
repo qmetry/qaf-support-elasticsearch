@@ -21,12 +21,14 @@
  ******************************************************************************/
 package com.qmetry.qaf.automation.elasticsearch;
 
+import static com.qmetry.qaf.automation.core.ConfigurationManager.getBundle;
 import static com.qmetry.qaf.automation.elasticsearch.ElasticSerachService.close;
 import static com.qmetry.qaf.automation.elasticsearch.ElasticSerachService.submit;
 
 import com.qmetry.qaf.automation.integration.TestCaseResultUpdator;
 import com.qmetry.qaf.automation.integration.TestCaseRunResult;
 import com.qmetry.qaf.automation.keys.ApplicationProperties;
+import com.qmetry.qaf.automation.util.StringUtil;
 /**
  * This is {@link TestCaseResultUpdator} implementation for Elastic search. It is uses following properties:
  * <ul>
@@ -47,9 +49,7 @@ public class ElasticSearchIndexer implements TestCaseResultUpdator {
 	@Override
 	public boolean updateResult(TestCaseRunResult result) {
 		try {
-			if (!ApplicationProperties.DRY_RUN_MODE.getBoolenVal(false)) {
-				return submit(result);
-			}
+			return submit(result);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -64,6 +64,20 @@ public class ElasticSearchIndexer implements TestCaseResultUpdator {
 	@Override
 	public boolean allowConfigAndRetry() {
 		return false;
+	}
+	
+	@Override
+	public boolean enabled() {
+		return  !ApplicationProperties.DRY_RUN_MODE.getBoolenVal(false)
+				&&StringUtil.isNotBlank(getBundle().getString("elasticsearch.host"))
+				&& getBundle().getBoolean("elasticsearch.reporter", true);
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if(null==obj || !(obj instanceof ElasticSearchIndexer))
+			return false;
+		return getToolName().equalsIgnoreCase(((ElasticSearchIndexer)obj).getToolName());
 	}
 	
 }

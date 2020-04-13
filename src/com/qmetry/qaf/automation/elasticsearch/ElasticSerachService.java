@@ -24,11 +24,7 @@ package com.qmetry.qaf.automation.elasticsearch;
 import static com.qmetry.qaf.automation.core.ConfigurationManager.getBundle;
 import static org.elasticsearch.client.RestClient.builder;
 
-import java.io.File;
 import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -39,7 +35,6 @@ import org.elasticsearch.client.Response;
 import org.elasticsearch.client.RestClient;
 
 import com.qmetry.qaf.automation.integration.TestCaseRunResult;
-import com.qmetry.qaf.automation.util.FileUtil;
 import com.qmetry.qaf.automation.util.JSONUtil;
 
 /**
@@ -72,22 +67,23 @@ public class ElasticSerachService {
 		}
 	}
 
-	private void createAssets() throws URISyntaxException, IOException {
+	private void createAssets() throws IOException {
 		if (createIndex(INDEX_NAME)) {
 			createIndex(CHKPONIT_INDEX_NAME);
 			createIndex(LOG_INDEX_NAME);
-			String[] kibanahoststr = getBundle().getStringArray("kibana.host", new String[] {});
+			/*String[] kibanahoststr = getBundle().getStringArray("kibana.host", new String[] {});
 			if (kibanahoststr.length > 0) {
 				RestClient kibanaClient = builder(
 						Arrays.stream(kibanahoststr).map(s -> HttpHost.create((String) s)).toArray(HttpHost[]::new))
 								.build();
 				Request request = new Request(METHOD_POST, "/api/saved_objects/_import");
-				URI kibanaDashBoard = this.getClass().getResource("objects.ndjson").toURI();
-				String objects = FileUtil.readFileToString(new File(kibanaDashBoard), StandardCharsets.UTF_8);
+				InputStream kibanaDashBoard = ElasticSerachService.class.getResourceAsStream("objects.ndjson");
+				String objects = IOUtils.toString(kibanaDashBoard, StandardCharsets.UTF_8);
 				request.setJsonEntity(objects);
 				//request.getOptions().getHeaders().add(new BasicHeader("kbn-xsrf", "true"));
 				kibanaClient.performRequest(request);
-			}
+				
+			}*/
 		}
 	}
 

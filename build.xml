@@ -49,7 +49,7 @@ For any inquiry or need additional information, please contact support-qaf@infos
 	<target name="make-jar" depends="clean, compile" description="build basic version">
 
 		<mkdir dir="${dist.dir}" />
-		<jar destfile="${dist.dir}/qaf-support.jar" basedir="${bin.dir}">
+		<jar destfile="${dist.dir}/${ivy.module}.jar" basedir="${bin.dir}">
 			<metainf dir="." includes="LICENSE.txt" />
 			<metainf dir="." includes="${dist.dir}/pom.xml,${dist.dir}/pom.properties" />
 			<manifest>
@@ -64,6 +64,9 @@ For any inquiry or need additional information, please contact support-qaf@infos
 					<attribute name="qaf-Type" value="support" />
 				</section>
 			</manifest>
+			<service type="com.qmetry.qaf.automation.integration.TestCaseResultUpdator">
+				<provider classname="com.qmetry.qaf.automation.elasticsearch.ElasticSearchIndexer" />
+			</service>
 		</jar>
 	</target>
 </project>

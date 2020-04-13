@@ -33,7 +33,9 @@ import org.apache.commons.configuration.ConfigurationConverter;
 import com.qmetry.qaf.automation.core.CheckpointResultBean;
 import com.qmetry.qaf.automation.core.LoggingBean;
 import com.qmetry.qaf.automation.integration.TestCaseRunResult;
+import com.qmetry.qaf.automation.keys.ApplicationProperties;
 import com.qmetry.qaf.automation.util.DateUtil;
+import com.qmetry.qaf.automation.util.StringUtil;
 
 /**
  * @author chirag.jayswal
@@ -50,6 +52,7 @@ public class TestCaseRunResultDocument {
 	private Long duration;
 	private Map<String, Object> executionInfo;
 	private Map<String, Object> metadata;
+	private Collection<Object> testdata;
 	private Throwable exception;
 	private Collection<CheckpointResultBean> steps;
 	private Collection<LoggingBean> commands;
@@ -65,12 +68,28 @@ public class TestCaseRunResultDocument {
 		duration = result.getEndtime() - result.getStarttime();
 		exception = result.getThrowable();
 		executionInfo = result.getExecutionInfo();
-		suite_stTime = DateUtil.getFormatedDate(new Date(getBundle().getLong("suit.start.ts", sttime)),DATE_FORMAT);
+		suite_stTime = DateUtil.getFormatedDate(new Date(getBundle().getLong("execution.start.ts", sttime)),DATE_FORMAT);
 		metadata = result.getMetaData();
 		if (!getBundle().subset("project").isEmpty()) {
 			executionInfo.put("project", ConfigurationConverter.getMap(getBundle().subset("project")));
 		}
 		udid = UUID.nameUUIDFromBytes((stTime + name).getBytes());
+		if(result.getTestData()!=null && !result.getTestData().isEmpty()) {
+			setTestdata(result.getTestData());
+			Object testData1 = result.getTestData().iterator().next();
+			if (testData1 instanceof Map<?, ?>) {
+				String identifierKey = ApplicationProperties.TESTCASE_IDENTIFIER_KEY.getStringVal("testCaseId");
+				Map<String, Object> testDataMap = (Map<String, Object>) testData1;
+				String identifierVal = testDataMap.getOrDefault(identifierKey, "").toString();
+				if(StringUtil.isBlank(identifierVal)) {
+					identifierVal = testDataMap.getOrDefault("__index", "").toString();
+				}
+				if(StringUtil.isBlank(identifierVal)) {
+					name = result.getName()+"-"+identifierVal;
+				}
+
+			}
+		}
 	}
 
 	public UUID getUdid() {
@@ -147,6 +166,14 @@ public class TestCaseRunResultDocument {
 
 	public void setMetadata(Map<String, Object> metadata) {
 		this.metadata = metadata;
+	}
+
+	public Collection<Object> getTestdata() {
+		return testdata;
+	}
+
+	public void setTestdata(Collection<Object> testdata) {
+		this.testdata = testdata;
 	}
 
 	public Throwable getException() {
