@@ -7,7 +7,7 @@
 
 # Usage
 
-1. Added [dependency](https://mvnrepository.com/artifact/com.qmetry/qaf-support-elasticsearch) to your project.
+1. Add [dependency](https://mvnrepository.com/artifact/com.qmetry/qaf-support-elasticsearch) to your project.
 2. Provide elastic serach server url using `elasticsearch.host` property.
 3. Import [dashboard](https://github.com/qmetry/qaf-support-elasticsearch/blob/master/src/com/qmetry/qaf/automation/elasticsearch/objects.ndjson) in kibana (first time only)
 
