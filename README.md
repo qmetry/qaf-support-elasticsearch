@@ -7,14 +7,14 @@
 
 # Usage
 
-1. Add [dependency](https://mvnrepository.com/artifact/com.qmetry/qaf-support-elasticsearch) to your project.
-2. Provide elastic serach server url using `elasticsearch.host` property.
+1. Add [qaf-support-elasticsearch](https://mvnrepository.com/artifact/com.qmetry/qaf-support-elasticsearch) and [elasticsearch-rest-client](https://mvnrepository.com/artifact/org.elasticsearch.client/elasticsearch-rest-client). 
+2. Provide elastic serach server url using `elasticsearch.host` property. If you don't have elastic serach server and Kibana set up, you can [start here](https://www.elastic.co/start)
 3. Import [dashboard](https://github.com/qmetry/qaf-support-elasticsearch/blob/master/src/com/qmetry/qaf/automation/elasticsearch/objects.ndjson) in kibana (first time only)
 
 ### Example properties:
 ```
 elasticsearch.host=http://localhost:9200;http://localhost:9201
-#elasticsearch.index is optional, default value is qaf_results
+#elasticsearch.index is optional, default value is qaf_results if you are new to elastic serach, don't provide index and keep it default.
 elasticsearch.index=MyPrjIndexName
 
 ```
