@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 import org.apache.http.HttpHost;
 import org.elasticsearch.client.Request;
@@ -90,7 +91,7 @@ public class ElasticSerachService {
 	private boolean createIndex(String name) {
 		try {
 			Request request = new Request(METHOD_PUT, name + "/");
-			// request.setJsonEntity(getMappings());
+			request.setJsonEntity(getBundle().getString("elasticsearch."+name+".entity", "{\"settings\":{\"index.mapping.total_fields.limit\":10000}}"));
 			Response response = elasticSerachClient.performRequest(request);
 			return response.getStatusLine().getStatusCode() == 201;
 		} catch (Exception e) {
@@ -104,6 +105,7 @@ public class ElasticSerachService {
 				int status = SERVICE.elasticSerachClient.performRequest(request).getStatusLine().getStatusCode();
 				return status == 200 || status == 201;
 			} catch (Exception e) {
+				System.err.println(e.getMessage());
 				return false;
 			}
 		}
@@ -112,7 +114,7 @@ public class ElasticSerachService {
 
 	public static boolean submit(TestCaseRunResult result) {
 		TestCaseRunResultDocument doc = new TestCaseRunResultDocument(result);
-		String id = doc.getUdid().toString();
+		UUID id = doc.getUdid();
 
 		Request request = new Request(METHOD_POST, INDEX_NAME + "/_doc/" + id);
 		request.setJsonEntity(JSONUtil.toString(doc));
@@ -120,13 +122,22 @@ public class ElasticSerachService {
 
 		request = new Request(METHOD_POST, CHKPONIT_INDEX_NAME + "/_doc/" + id);
 		doc = new TestCaseRunResultDocument();
+		doc.setUdid(id);
 		doc.setSteps(result.getCheckPoints());
+		doc.setStTime(result.getStarttime());
+		//doc.setName(result);
+		//doc.setStatus(result.getStatus().name());
+
 		request.setJsonEntity(JSONUtil.toString(doc));
 		success = ElasticSerachService.perform(request);
 
 		request = new Request(METHOD_POST, LOG_INDEX_NAME + "/_doc/" + id);
 		doc = new TestCaseRunResultDocument();
+		doc.setUdid(id);
 		doc.setCommands(result.getCommandLogs());
+		doc.setStTime(result.getStarttime());
+		//doc.setName(result);
+
 		request.setJsonEntity(JSONUtil.toString(doc));
 		success = ElasticSerachService.perform(request);
 
@@ -160,4 +171,8 @@ public class ElasticSerachService {
 		return JSONUtil.toString(mappings);
 	}
 
+	public static void main(String[] args) {
+		SERVICE.createIndex("test_fields2");
+		System.exit(0);
+	}
 }

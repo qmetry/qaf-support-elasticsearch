@@ -22,20 +22,33 @@
 package com.qmetry.qaf.automation.elasticsearch;
 
 import static com.qmetry.qaf.automation.core.ConfigurationManager.getBundle;
+import static com.qmetry.qaf.automation.util.StringMatcher.containsIgnoringCase;
+import static com.qmetry.qaf.automation.util.StringUtil.abbreviate;
+import static com.qmetry.qaf.automation.util.StringUtil.defaultString;
+import static com.qmetry.qaf.automation.util.StringUtil.isBlank;
+import static com.qmetry.qaf.automation.util.StringUtil.isNotBlank;
+import static org.apache.commons.lang.exception.ExceptionUtils.getFullStackTrace;
+import static org.apache.commons.lang.exception.ExceptionUtils.getMessage;
+import static org.apache.commons.lang.exception.ExceptionUtils.getRootCauseMessage;
+import static org.apache.commons.lang.exception.ExceptionUtils.getThrowableList;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.apache.commons.configuration.ConfigurationConverter;
+import org.apache.commons.lang.ClassUtils;
 
 import com.qmetry.qaf.automation.core.CheckpointResultBean;
 import com.qmetry.qaf.automation.core.LoggingBean;
 import com.qmetry.qaf.automation.integration.TestCaseRunResult;
 import com.qmetry.qaf.automation.keys.ApplicationProperties;
 import com.qmetry.qaf.automation.util.DateUtil;
-import com.qmetry.qaf.automation.util.StringUtil;
 
 /**
  * @author chirag.jayswal
@@ -53,7 +66,7 @@ public class TestCaseRunResultDocument {
 	private Map<String, Object> executionInfo;
 	private Map<String, Object> metadata;
 	private Collection<Object> testdata;
-	private Throwable exception;
+	private Map<String, Object> exception;
 	private Collection<CheckpointResultBean> steps;
 	private Collection<LoggingBean> commands;
 	private static final String DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSZZ";
@@ -62,36 +75,45 @@ public class TestCaseRunResultDocument {
 	}
 
 	public TestCaseRunResultDocument(TestCaseRunResult result) {
-		name = result.getName();
+		setName(result);
 		status = result.getStatus().name();
-		stTime = DateUtil.getFormatedDate(new Date(result.getStarttime()),DATE_FORMAT);
+		setStTime(result.getStarttime());
 		duration = result.getEndtime() - result.getStarttime();
-		exception = result.getThrowable();
+		setException(result);
 		executionInfo = result.getExecutionInfo();
 		suite_stTime = DateUtil.getFormatedDate(new Date(getBundle().getLong("execution.start.ts", sttime)),DATE_FORMAT);
 		metadata = result.getMetaData();
 		if (!getBundle().subset("project").isEmpty()) {
 			executionInfo.put("project", ConfigurationConverter.getMap(getBundle().subset("project")));
 		}
+		
+		//map with key "a" and "a.b" will cause problem while indexing
+		dotInKeyTo_(executionInfo);
+		dotInKeyTo_(metadata);
+
 		udid = UUID.nameUUIDFromBytes((stTime + name).getBytes());
 		if(result.getTestData()!=null && !result.getTestData().isEmpty()) {
 			setTestdata(result.getTestData());
+		}
+	}
+	void setName(TestCaseRunResult result) {
+		name = result.getName();
+		if(result.getTestData()!=null && !result.getTestData().isEmpty()) {
 			Object testData1 = result.getTestData().iterator().next();
 			if (testData1 instanceof Map<?, ?>) {
 				String identifierKey = ApplicationProperties.TESTCASE_IDENTIFIER_KEY.getStringVal("testCaseId");
+				@SuppressWarnings("unchecked")
 				Map<String, Object> testDataMap = (Map<String, Object>) testData1;
 				String identifierVal = testDataMap.getOrDefault(identifierKey, "").toString();
-				if(StringUtil.isBlank(identifierVal)) {
+				if(isBlank(identifierVal)) {
 					identifierVal = testDataMap.getOrDefault("__index", "").toString();
 				}
-				if(StringUtil.isBlank(identifierVal)) {
+				if(isNotBlank(identifierVal)) {
 					name = result.getName()+"-"+identifierVal;
 				}
-
 			}
 		}
 	}
-
 	public UUID getUdid() {
 		return udid;
 	}
@@ -130,6 +152,10 @@ public class TestCaseRunResultDocument {
 
 	public void setStTime(String stTime) {
 		this.stTime = stTime;
+	}
+	
+	public void setStTime(long stTime) {
+		this.stTime = DateUtil.getFormatedDate(new Date(stTime),DATE_FORMAT);
 	}
 
 	public String getSuite_stTime() {
@@ -176,12 +202,48 @@ public class TestCaseRunResultDocument {
 		this.testdata = testdata;
 	}
 
-	public Throwable getException() {
+	public Map<String, Object> getException() {
 		return exception;
 	}
 
-	public void setException(Throwable exception) {
-		this.exception = exception;
+	public void setException(TestCaseRunResult result) {
+		try {
+			Throwable throwable = result.getThrowable();
+			if (null != throwable) {
+				exception = new HashMap<String, Object>();
+				exception.put("class", ClassUtils.getShortClassName(throwable, "Unknown"));
+		        List<String> messages = new ArrayList<String>();
+				for(Object o : getThrowableList(throwable)) {
+					Throwable cause = (Throwable)o;
+					if(null!=cause && isNotBlank(cause.getMessage())) {
+						messages.add(abbreviate(cause.getMessage(), 255));
+					}
+				}
+				if(messages.isEmpty()) {
+					String message = defaultString(throwable.getMessage(), ClassUtils.getShortClassName(throwable, "Unknown"));
+					messages.add(abbreviate(message,255));
+				}
+				exception.put("messages", messages);
+				exception.put("detailMessage", getMessage(throwable));
+				exception.put("rootCauseMessage", abbreviate(getRootCauseMessage(throwable),255));
+				exception.put("detailStackTrace", getFullStackTrace(throwable));
+			} else if (!status.equalsIgnoreCase("PASS")) {
+				Collection<CheckpointResultBean> chkPoints = result.getCheckPoints();
+				List<String> failures = chkPoints.stream()
+						.filter(c -> containsIgnoringCase("fail").match(c.getType())).map(c -> c.getMessage())
+						.collect(Collectors.toList());
+				if (failures != null && !failures.isEmpty()) {
+					exception = new HashMap<String, Object>();
+					exception.put("class", "VerificationFailure");
+					exception.put("messages", failures.stream().map(s->abbreviate(s,255)).collect(Collectors.toList()));
+					exception.put("detailMessage", String.format("%d verification failed", failures.size()));
+					exception.put("rootCauseMessage", "verification failed");
+					exception.put("detailstackTrace", failures.toString());
+				}
+			}
+		} catch (Throwable e) {
+			System.err.println("[TestCaseRunResultDocument] Unable to setException: " + e.getMessage());
+		}
 	}
 
 	public Collection<CheckpointResultBean> getSteps() {
@@ -198,5 +260,13 @@ public class TestCaseRunResultDocument {
 
 	public void setCommands(Collection<LoggingBean> commands) {
 		this.commands = commands;
+	}
+	
+	private void dotInKeyTo_(Map<String, Object> map) {
+		List<String> values = map.keySet().stream().filter(string -> string.indexOf(".") > 0)
+				.collect(Collectors.toList());
+		if (values != null && !values.isEmpty()) {
+        	values.forEach(key ->map.put(key.replace('.', '_'), map.remove(key)));
+		}
 	}
 }
