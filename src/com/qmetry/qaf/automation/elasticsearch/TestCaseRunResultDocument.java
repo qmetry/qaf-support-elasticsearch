@@ -38,6 +38,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -90,7 +91,6 @@ public class TestCaseRunResultDocument {
 		//map with key "a" and "a.b" will cause problem while indexing
 		dotInKeyTo_(executionInfo);
 		dotInKeyTo_(metadata);
-
 		udid = UUID.nameUUIDFromBytes((stTime + name).getBytes());
 		if(result.getTestData()!=null && !result.getTestData().isEmpty()) {
 			setTestdata(result.getTestData());
@@ -111,6 +111,7 @@ public class TestCaseRunResultDocument {
 				if(isNotBlank(identifierVal)) {
 					name = result.getName()+"-"+identifierVal;
 				}
+				wrapObj(testDataMap);
 			}
 		}
 	}
@@ -262,11 +263,33 @@ public class TestCaseRunResultDocument {
 		this.commands = commands;
 	}
 	
+	@SuppressWarnings("unchecked")
 	private void dotInKeyTo_(Map<String, Object> map) {
 		List<String> values = map.keySet().stream().filter(string -> string.indexOf(".") > 0)
 				.collect(Collectors.toList());
 		if (values != null && !values.isEmpty()) {
         	values.forEach(key ->map.put(key.replace('.', '_'), map.remove(key)));
 		}
+		
+		map.values().stream().filter(val -> val instanceof Map)
+		.collect(Collectors.toList()).forEach(m->dotInKeyTo_((Map<String, Object>)m));
+	}
+
+	@SuppressWarnings("unchecked")
+	private void wrapObj(Map<String, Object> map) {
+
+		for (Entry<String, Object> entry : map.entrySet()) {
+			Object val = entry.getValue();
+			if (null != val) {
+				if (val instanceof Map) {
+					wrapObj((Map<String, Object>) val);
+				} else if (!val.getClass().isArray() && !(val instanceof Collection)) {
+					entry.setValue(String.valueOf(val));
+				} else {
+					entry.setValue(String.valueOf(val));
+				}
+			}
+		}
+
 	}
 }
