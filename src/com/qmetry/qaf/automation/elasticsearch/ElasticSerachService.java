@@ -153,26 +153,4 @@ public class ElasticSerachService {
 			}
 		}
 	}
-
-	@SuppressWarnings("unused")
-	private static String getMappings() {
-		Map<String, Object> mappings = new HashMap<String, Object>();
-		Map<String, Object> doc = new HashMap<String, Object>();
-		Map<String, Object> pros = new HashMap<String, Object>();
-		Map<String, Object> fieldsmap = new HashMap<String, Object>();
-		Map<String, Object> dateMapping = new HashMap<String, Object>();
-		dateMapping.put("type", "date");
-		dateMapping.put("format", "epoch_millis");
-		fieldsmap.put("stTime", dateMapping);
-		fieldsmap.put("suite_stTime", dateMapping);
-		pros.put("properties", fieldsmap);
-		doc.put("_doc", pros);
-		mappings.put("mappings", doc);
-		return JSONUtil.toString(mappings);
-	}
-
-	public static void main(String[] args) {
-		SERVICE.createIndex("test_fields2");
-		System.exit(0);
-	}
 }
