@@ -81,6 +81,7 @@ public class TestCaseRunResultDocument {
 		setStTime(result.getStarttime());
 		duration = result.getEndtime() - result.getStarttime();
 		setException(result);
+		className=result.getClassName();
 		executionInfo = result.getExecutionInfo();
 		suite_stTime = DateUtil.getFormatedDate(new Date(getBundle().getLong("execution.start.ts", sttime)),DATE_FORMAT);
 		metadata = result.getMetaData();

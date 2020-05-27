@@ -26,8 +26,6 @@ import static org.elasticsearch.client.RestClient.builder;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 
 import org.apache.http.HttpHost;
@@ -72,19 +70,6 @@ public class ElasticSerachService {
 		if (createIndex(INDEX_NAME)) {
 			createIndex(CHKPONIT_INDEX_NAME);
 			createIndex(LOG_INDEX_NAME);
-			/*String[] kibanahoststr = getBundle().getStringArray("kibana.host", new String[] {});
-			if (kibanahoststr.length > 0) {
-				RestClient kibanaClient = builder(
-						Arrays.stream(kibanahoststr).map(s -> HttpHost.create((String) s)).toArray(HttpHost[]::new))
-								.build();
-				Request request = new Request(METHOD_POST, "/api/saved_objects/_import");
-				InputStream kibanaDashBoard = ElasticSerachService.class.getResourceAsStream("objects.ndjson");
-				String objects = IOUtils.toString(kibanaDashBoard, StandardCharsets.UTF_8);
-				request.setJsonEntity(objects);
-				//request.getOptions().getHeaders().add(new BasicHeader("kbn-xsrf", "true"));
-				kibanaClient.performRequest(request);
-				
-			}*/
 		}
 	}
 
