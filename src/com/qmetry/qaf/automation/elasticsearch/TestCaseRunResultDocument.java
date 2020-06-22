@@ -45,11 +45,15 @@ import java.util.stream.Collectors;
 import org.apache.commons.configuration.ConfigurationConverter;
 import org.apache.commons.lang.ClassUtils;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
 import com.qmetry.qaf.automation.core.CheckpointResultBean;
 import com.qmetry.qaf.automation.core.LoggingBean;
 import com.qmetry.qaf.automation.integration.TestCaseRunResult;
 import com.qmetry.qaf.automation.keys.ApplicationProperties;
 import com.qmetry.qaf.automation.util.DateUtil;
+import com.qmetry.qaf.automation.util.JSONUtil;
+import com.qmetry.qaf.automation.util.StringUtil;
 
 /**
  * @author chirag.jayswal
@@ -66,7 +70,8 @@ public class TestCaseRunResultDocument {
 	private Long duration;
 	private Map<String, Object> executionInfo;
 	private Map<String, Object> metadata;
-	private Collection<Object> testdata;
+	//testData as map/object may drastically increase index fields.
+	private String testData;
 	private Map<String, Object> exception;
 	private Collection<CheckpointResultBean> steps;
 	private Collection<LoggingBean> commands;
@@ -75,32 +80,32 @@ public class TestCaseRunResultDocument {
 	public TestCaseRunResultDocument() {
 	}
 
+	@SuppressWarnings("unchecked")
 	public TestCaseRunResultDocument(TestCaseRunResult result) {
+		metadata = normalizeFields(result.getMetaData());
 		setName(result);
 		status = result.getStatus().name();
 		setStTime(result.getStarttime());
 		duration = result.getEndtime() - result.getStarttime();
 		setException(result);
 		className=result.getClassName();
-		executionInfo = result.getExecutionInfo();
+		executionInfo = normalizeFields(result.getExecutionInfo());
 		suite_stTime = DateUtil.getFormatedDate(new Date(getBundle().getLong("execution.start.ts", sttime)),DATE_FORMAT);
-		metadata = result.getMetaData();
 		if (!getBundle().subset("project").isEmpty()) {
-			executionInfo.put("project", ConfigurationConverter.getMap(getBundle().subset("project")));
+			executionInfo.put("project", normalizeFields(ConfigurationConverter.getMap(getBundle().subset("project"))));
 		}
-		
-		//map with key "a" and "a.b" will cause problem while indexing
-		dotInKeyTo_(executionInfo);
-		dotInKeyTo_(metadata);
+
 		udid = UUID.nameUUIDFromBytes((stTime + name).getBytes());
 		if(result.getTestData()!=null && !result.getTestData().isEmpty()) {
-			setTestdata(result.getTestData());
+			setTestData(result.getTestData());
 		}
 	}
 	void setName(TestCaseRunResult result) {
 		name = result.getName();
 		if(result.getTestData()!=null && !result.getTestData().isEmpty()) {
 			Object testData1 = result.getTestData().iterator().next();
+			String[] metaDataInTestData = getBundle().getStringArray("elasticsearch.metadata.from.testdata");
+
 			if (testData1 instanceof Map<?, ?>) {
 				String identifierKey = ApplicationProperties.TESTCASE_IDENTIFIER_KEY.getStringVal("testCaseId");
 				@SuppressWarnings("unchecked")
@@ -108,11 +113,35 @@ public class TestCaseRunResultDocument {
 				String identifierVal = testDataMap.getOrDefault(identifierKey, "").toString();
 				if(isBlank(identifierVal)) {
 					identifierVal = testDataMap.getOrDefault("__index", "").toString();
+				}else {
+					metadata.put(identifierKey, identifierVal);
 				}
 				if(isNotBlank(identifierVal)) {
 					name = result.getName()+"-"+identifierVal;
 				}
-				wrapObj(testDataMap);
+				if (null != metaDataInTestData && metaDataInTestData.length > 0) {
+					for (String metaKey : metaDataInTestData) {
+						if (testDataMap.containsKey(metaKey)) {
+							metadata.put(normalizeKey(metaKey), normalizeValue(testDataMap.get(metaKey)));
+						}
+					}
+				}
+			}else {
+				try {
+					if (null != metaDataInTestData && metaDataInTestData.length > 0) {
+						JsonElement obj = new Gson().toJsonTree(testData1);
+						if (obj != null && obj.isJsonObject()) {
+							Map<?, ?> map = new Gson().fromJson(obj, Map.class);
+							for (String metaKey : metaDataInTestData) {
+								if (map.containsKey(metaKey)) {
+									metadata.put(normalizeKey(metaKey), normalizeValue(map.get(metaKey)));
+								}
+							}
+						}
+					}
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
 			}
 		}
 	}
@@ -196,12 +225,13 @@ public class TestCaseRunResultDocument {
 		this.metadata = metadata;
 	}
 
-	public Collection<Object> getTestdata() {
-		return testdata;
+	public String getTestData() {
+		return testData;
 	}
 
-	public void setTestdata(Collection<Object> testdata) {
-		this.testdata = testdata;
+	public void setTestData(Collection<Object> testdata) {
+		if(null!=testdata)
+		this.testData = JSONUtil.toString(testdata);
 	}
 
 	public Map<String, Object> getException() {
@@ -264,33 +294,49 @@ public class TestCaseRunResultDocument {
 		this.commands = commands;
 	}
 	
-	@SuppressWarnings("unchecked")
-	private void dotInKeyTo_(Map<String, Object> map) {
-		List<String> values = map.keySet().stream().filter(string -> string.indexOf(".") > 0)
-				.collect(Collectors.toList());
-		if (values != null && !values.isEmpty()) {
-        	values.forEach(key ->map.put(key.replace('.', '_'), map.remove(key)));
-		}
-		
-		map.values().stream().filter(val -> val instanceof Map)
-		.collect(Collectors.toList()).forEach(m->dotInKeyTo_((Map<String, Object>)m));
-	}
 
 	@SuppressWarnings("unchecked")
-	private void wrapObj(Map<String, Object> map) {
-
+	private Map<String, Object> normalizeFields(Map<String, Object> map) {
+		Map<String, Object> objToRet = new HashMap<String, Object>();
 		for (Entry<String, Object> entry : map.entrySet()) {
 			Object val = entry.getValue();
 			if (null != val) {
 				if (val instanceof Map) {
-					wrapObj((Map<String, Object>) val);
+					val = normalizeFields((Map<String, Object>) val);
 				} else if (!val.getClass().isArray() && !(val instanceof Collection)) {
-					entry.setValue(String.valueOf(val));
+					val =String.valueOf(val);
 				} else {
-					entry.setValue(String.valueOf(val));
+					val = entry.setValue(String.valueOf(val));
 				}
 			}
+			
+			String key=normalizeKey(entry.getKey());
+			objToRet.put(key, val);
 		}
-
+		return objToRet;
+	}
+	
+	@SuppressWarnings("unchecked")
+	private Object normalizeValue(Object val) {
+		if (null != val) {
+			if (val instanceof Map) {
+				val = normalizeFields((Map<String, Object>) val);
+			} else if (!val.getClass().isArray() && !(val instanceof Collection)) {
+				// consider dynamic field value always string. Example version can be 1 as well
+				// as 1.0.0
+				val = String.valueOf(val);
+			}
+		}
+		return val;
+	}
+	
+	private String normalizeKey(String key) {
+		//blank key not allowed in index field
+		if(StringUtil.isBlank(key)) {
+			return "_value";
+		}
+		//change to lower case to make dynamic fields case insensitive. 
+		// map with key "a" and "a.b" will cause problem while indexing, replace dot In Key To _
+		return key.replace('.', '_').toLowerCase();
 	}
 }

@@ -33,8 +33,9 @@ import org.elasticsearch.client.Request;
 import org.elasticsearch.client.Response;
 import org.elasticsearch.client.RestClient;
 
+import com.google.gson.Gson;
 import com.qmetry.qaf.automation.integration.TestCaseRunResult;
-import com.qmetry.qaf.automation.util.JSONUtil;
+import com.qmetry.qaf.automation.util.StringUtil;
 
 /**
  * This class used by {@link ElasticSearchIndexer} to index result documents. Please refer {@link ElasticSearchIndexer}.
@@ -43,7 +44,11 @@ import com.qmetry.qaf.automation.util.JSONUtil;
  *
  */
 public class ElasticSerachService {
-	private static final String INDEX_NAME = getBundle().getString("elasticsearch.index", "qaf_results");
+	/**
+	 * version suffix to be updated on change in index pattern
+	 */
+	private static final String VER_SUFFIX = "_v1";
+	private static final String INDEX_NAME = getBundle().getString("elasticsearch.index", "qaf_results").toLowerCase()+VER_SUFFIX;
 	private static final String LOG_INDEX_NAME = INDEX_NAME + "_commandlogs";
 	private static final String CHKPONIT_INDEX_NAME = INDEX_NAME + "_checkpoints";
 	private static final String METHOD_POST = "POST";
@@ -57,9 +62,7 @@ public class ElasticSerachService {
 
 	private void init() {
 		try {
-			String[] hoststr = getBundle().getStringArray("elasticsearch.host", new String[] {});
-			elasticSerachClient = builder(
-					Arrays.stream(hoststr).map(s -> HttpHost.create((String) s)).toArray(HttpHost[]::new)).build();
+			elasticSerachClient = buildElasticSerachClient();
 			createAssets();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -83,7 +86,26 @@ public class ElasticSerachService {
 			return false;
 		}
 	}
+	
+	private RestClient buildElasticSerachClient() {
+		String providerClass = getBundle().getString("elasticsearch.client.provider", "");
+		if(StringUtil.isNotBlank(providerClass)) {
+			try {
+				ElasticSearchClientProvider provider = (ElasticSearchClientProvider) Class.forName(providerClass).newInstance();
+				return provider.buildElasticSerachClient();
+			} catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
+				throw new RuntimeException(e);
+			}
+		}else {
+			String[] hoststr = getBundle().getStringArray("elasticsearch.host", new String[] {});
+			return builder(
+					Arrays.stream(hoststr).map(s -> HttpHost.create((String) s)).toArray(HttpHost[]::new)).build();
+		}
+	}
 
+	public static RestClient getElasticSerachClient() {
+		return SERVICE.elasticSerachClient;
+	}
 	public static boolean perform(Request request) {
 		if (null != SERVICE.elasticSerachClient) {
 			try {
@@ -100,9 +122,9 @@ public class ElasticSerachService {
 	public static boolean submit(TestCaseRunResult result) {
 		TestCaseRunResultDocument doc = new TestCaseRunResultDocument(result);
 		UUID id = doc.getUdid();
-
+		Gson gson = new Gson();
 		Request request = new Request(METHOD_POST, INDEX_NAME + "/_doc/" + id);
-		request.setJsonEntity(JSONUtil.toString(doc));
+		request.setJsonEntity(gson.toJson(doc));
 		boolean success = ElasticSerachService.perform(request);
 
 		request = new Request(METHOD_POST, CHKPONIT_INDEX_NAME + "/_doc/" + id);
@@ -113,7 +135,7 @@ public class ElasticSerachService {
 		//doc.setName(result);
 		//doc.setStatus(result.getStatus().name());
 
-		request.setJsonEntity(JSONUtil.toString(doc));
+		request.setJsonEntity(gson.toJson(doc));
 		success = ElasticSerachService.perform(request);
 
 		request = new Request(METHOD_POST, LOG_INDEX_NAME + "/_doc/" + id);
@@ -123,7 +145,7 @@ public class ElasticSerachService {
 		doc.setStTime(result.getStarttime());
 		//doc.setName(result);
 
-		request.setJsonEntity(JSONUtil.toString(doc));
+		request.setJsonEntity(gson.toJson(doc));
 		success = ElasticSerachService.perform(request);
 
 		return success;
