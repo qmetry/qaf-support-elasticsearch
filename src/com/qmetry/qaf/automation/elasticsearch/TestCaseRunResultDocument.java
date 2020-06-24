@@ -229,6 +229,10 @@ public class TestCaseRunResultDocument {
 		return testData;
 	}
 
+	public void setTestData(String testData) {
+		this.testData = testData;
+	}
+
 	public void setTestData(Collection<Object> testdata) {
 		if(null!=testdata)
 		this.testData = JSONUtil.toString(testdata);
@@ -236,6 +240,10 @@ public class TestCaseRunResultDocument {
 
 	public Map<String, Object> getException() {
 		return exception;
+	}
+
+	public void setException(Map<String, Object> exception) {
+		this.exception = exception;
 	}
 
 	public void setException(TestCaseRunResult result) {
