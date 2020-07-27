@@ -29,12 +29,15 @@ import java.util.Arrays;
 import java.util.UUID;
 
 import org.apache.http.HttpHost;
+import org.apache.http.util.EntityUtils;
 import org.elasticsearch.client.Request;
 import org.elasticsearch.client.Response;
 import org.elasticsearch.client.RestClient;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.qmetry.qaf.automation.integration.TestCaseRunResult;
+import com.qmetry.qaf.automation.util.JSONUtil;
 import com.qmetry.qaf.automation.util.StringUtil;
 
 /**
@@ -147,10 +150,65 @@ public class ElasticSerachService {
 
 		request.setJsonEntity(gson.toJson(doc));
 		success = ElasticSerachService.perform(request);
-
+		
+		if(success && getBundle().containsKey("project.cyclename")) {
+			updateCycle(doc);
+		}
 		return success;
 	}
 
+	private static void updateCycle(TestCaseRunResultDocument doc ) {
+		try {
+			String cycle = getBundle().getString("project.cyclename");
+			String status = doc.getStatus();
+			String tcname = doc.getName();
+			String lastsuccess=doc.getStTime();
+			String lastsuccesscycle=cycle;
+
+			if(!status.equalsIgnoreCase("pass")) {
+				try {
+					String jsonEntity = String.format(
+							"{\"query\":\"select executionInfo.project.cyclename, stTime from \\\"%s\\\" where executionInfo.project.cyclename IS NOT NULL AND status = 'PASS' AND name = '%s' order by stTime DESC limit 1\"}",
+							INDEX_NAME, tcname);
+					Request request = new Request(METHOD_POST, "/_sql");
+					request.setJsonEntity(jsonEntity);
+					Response res = SERVICE.elasticSerachClient.performRequest(request);
+					String resStr = EntityUtils.toString(res.getEntity());
+					JsonArray result = JSONUtil.getGsonElement(resStr).getAsJsonObject().get("rows").getAsJsonArray();
+					if (null!=result && result.size() > 0) {
+						result = result.get(0).getAsJsonArray();
+						if (null!=result && result.size() == 2) {
+							lastsuccesscycle = result.get(0).getAsString();
+							lastsuccess = result.get(1).getAsString();
+						}
+					}
+				} catch (Exception | Error e) {
+					lastsuccesscycle = null;
+					lastsuccess = null;
+				}
+			}
+			String updateReqBody = String.format("{" + 
+					"\"script\": {" + 
+					" \"source\": \"ctx._source['laststatus'] = '%s'; if('%s'!='null'){ctx._source['lastsuccess'] = '%s'; ctx._source['lastsuccesscycle'] = '%s';}\"" + 
+					"}," + 
+					" \"query\": {" + 
+					" \"query_string\": {" + 
+					" \"query\": \"executionInfo.project.cyclename: '%s' AND name: '%s'\"" + 
+					" }" + 
+					" }" + 
+					"}", status,lastsuccess,lastsuccess,lastsuccesscycle,cycle,tcname);
+			
+			Request request = new Request(METHOD_POST, INDEX_NAME + "/_update_by_query?conflicts=proceed&refresh");
+			request.setJsonEntity(updateReqBody);
+			Response res = SERVICE.elasticSerachClient.performRequest(request);
+
+			if (res.getStatusLine().getStatusCode() != 200) {
+				System.err.println(EntityUtils.toString(res.getEntity()));
+			}
+		} catch (Exception | Error e) {
+			System.err.println(e.getMessage());
+		}
+	}
 	public static void close() {
 		if (null != SERVICE.elasticSerachClient) {
 			try {

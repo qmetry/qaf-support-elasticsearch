@@ -90,6 +90,16 @@ public class TestCaseRunResultDocument {
 		setException(result);
 		className=result.getClassName();
 		executionInfo = normalizeFields(result.getExecutionInfo());
+		executionInfo.put("host", System.getProperty("host.name"));
+		executionInfo.put("user", System.getProperty("user.name"));
+		executionInfo.put("os.name", System.getProperty("os.name"));
+		executionInfo.put("os.version", System.getProperty("os.version"));
+
+		executionInfo.put("os.arch", System.getProperty("os.arch"));
+		executionInfo.put("java.version", System.getProperty("java.version"));
+		executionInfo.put("java.vendor", System.getProperty("java.vendor"));
+		executionInfo.put("java.arch",
+				System.getProperty("sun.arch.data.model"));
 		suite_stTime = DateUtil.getFormatedDate(new Date(getBundle().getLong("execution.start.ts", sttime)),DATE_FORMAT);
 		if (!getBundle().subset("project").isEmpty()) {
 			executionInfo.put("project", normalizeFields(ConfigurationConverter.getMap(getBundle().subset("project"))));
