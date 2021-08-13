@@ -22,3 +22,14 @@ elasticsearch.host=http://localhost:9200;http://localhost:9201
 ```
 
 NOTE: This library requires qaf version 3.0.0-RC3 or above.
+
+Properties with `env` and `project` prefix will be reported under `executionInfo`
+
+Example:
+```
+project.name=AUTFunctionalAutomation
+project.appname=AUT
+project.release=r-01
+env.platform=web
+env.name=UAT
+```
