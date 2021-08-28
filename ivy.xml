@@ -23,7 +23,7 @@
 
 	<dependencies>
 		<dependency org="com.qmetry" name="qaf" rev="latest.integration" conf="provided->default"/>
-		<dependency org="org.aspectj" name="aspectjtools" rev="1.8.5">
+		<dependency org="org.aspectj" name="aspectjtools" rev="1.9.5">
 			<artifact name="aspectjtools" type="jar"></artifact>
 		</dependency>
 		<dependency org="org.elasticsearch.client" name="elasticsearch-rest-client" rev="7.6.2"/>
