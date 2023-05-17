@@ -22,10 +22,10 @@
     </configurations>
 
 	<dependencies>
-		<dependency org="com.qmetry" name="qaf" rev="${release.num}" conf="provided->default"/>
+		<dependency org="com.qmetry" name="qaf" rev="${release.num}" conf="compile->default"/>
 		<dependency org="org.aspectj" name="aspectjtools" rev="1.9.5">
 			<artifact name="aspectjtools" type="jar"></artifact>
 		</dependency>
-		<dependency org="org.elasticsearch.client" name="elasticsearch-rest-client" rev="7.6.2"/>
+		<dependency org="org.elasticsearch.client" name="elasticsearch-rest-client" rev="7.6.2"  conf="compile->default"/>
 	</dependencies>
 </ivy-module>
