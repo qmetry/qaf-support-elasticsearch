@@ -23,10 +23,12 @@
 
 	<dependencies>
 		<dependency org="com.qmetry" name="qaf" rev="${release.num}" conf="compile->default"/>
+				<dependency org="com.qmetry" name="qaf-support-ws" rev="${release.num}" conf="compile->default"/>
+		
 		<dependency org="org.aspectj" name="aspectjtools" rev="1.9.5">
 			<artifact name="aspectjtools" type="jar"></artifact>
 		</dependency>
-		<dependency org="org.elasticsearch.client" name="elasticsearch-rest-client" rev="7.6.2"  conf="compile->default"/>
+		<dependency org="org.elasticsearch.client" name="elasticsearch-rest-client" rev="7.6.2"  conf="provided->default"/>
 		<dependency org="org.apache.httpcomponents" name="httpclient" rev="4.5.10"  conf="compile->default"/>
 		
 	</dependencies>

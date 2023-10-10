@@ -65,6 +65,8 @@ For any inquiry or need additional information, please contact support-qaf@infos
 			</manifest>
 			<service type="com.qmetry.qaf.automation.integration.TestCaseResultUpdator">
 				<provider classname="com.qmetry.qaf.automation.elasticsearch.ElasticSearchIndexer" />
+				<provider classname="com.qmetry.qaf.automation.opensearch.OpenSearchIndexer" />
+
 			</service>
 		</jar>
 	</target>
